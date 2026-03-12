@@ -18,13 +18,24 @@ If --responder-model is not provided, the same model is used for all steps.
 """
 
 import argparse
+import os
 import sys
+from dataclasses import dataclass
 
 from pdf_parser import PDFParser
 from llm_client import LLMClient
 from discipline_detector import DisciplineDetector
+from docx_exporter import export_review_documents
 from review_generator import ReviewGenerator
 from review_responder import ReviewResponder
+
+
+@dataclass
+class ReviewPipelineResult:
+    discipline: str
+    review_questions: str
+    review_responses: str
+    output: str
 
 
 def parse_args(argv=None):
@@ -76,12 +87,6 @@ def parse_args(argv=None):
              "Defaults to the value of --temperature.",
     )
     parser.add_argument(
-        "--output-file",
-        default=None,
-        help="Optional path to write the full review output as a text file. "
-             "When omitted, the output is only printed to stdout.",
-    )
-    parser.add_argument(
         "--language",
         default="English",
         help="Language in which to generate the review questions and responses.",
@@ -93,16 +98,16 @@ def parse_args(argv=None):
              "(e.g., methodology, clarity, novelty). Provide as a newline-separated list.",
     )
     parser.add_argument(
-        "--output-path",
+        "--output-dir",
+        required=True,
         default=None,
-        help="Optional path to write the full review output as a text file. "
-             "When omitted, the output is only printed to stdout.",
+        help="Directory where the generated review and response Word documents will be saved.",
     )
 
     return parser.parse_args(argv)
 
 
-def run(args) -> str:
+def run(args) -> ReviewPipelineResult:
     """
     Execute the full review pipeline and return the combined output string.
 
@@ -113,8 +118,8 @@ def run(args) -> str:
 
     Returns
     -------
-    str
-        The full textual output of the review pipeline.
+    ReviewPipelineResult
+        Structured review data and combined textual output.
     """
     # ------------------------------------------------------------------ #
     # 1. Parse the PDF
@@ -188,23 +193,44 @@ def run(args) -> str:
         + "=" * 70 + "\n"
     )
 
-    return output
+    return ReviewPipelineResult(
+        discipline=discipline,
+        review_questions=review_questions,
+        review_responses=review_responses,
+        output=output,
+    )
 
 
 def main(argv=None):
     args = parse_args(argv)
 
     try:
-        output = run(args)
+        result = run(args)
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    print("\n" + output)
+    print("\n" + result.output)
+
+    try:
+        output_dir = args.output_dir
+        review_docx_path, response_docx_path = export_review_documents(
+            output_dir=output_dir,
+            paper_path=args.pdf,
+            discipline=result.discipline,
+            review_questions=result.review_questions,
+            review_responses=result.review_responses,
+        )
+    except Exception as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"评审意见 Word 已保存到: {review_docx_path}")
+    print(f"回复 Word 已保存到: {response_docx_path}")
 
     if args.output_path:
         with open(args.output_path, "w", encoding="utf-8") as fh:
-            fh.write(output)
+            fh.write(result.output)
         print(f"Output written to: {args.output_path}")
 
 

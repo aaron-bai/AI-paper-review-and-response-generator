@@ -28,7 +28,7 @@ class LLMClient:
         self,
         system_prompt: str,
         user_prompt: str,
-        max_tokens: Optional[int] = None,
+        max_tokens: Optional[int] = 64000,
     ) -> str:
         """
         Send a chat completion request and return the assistant reply as a string.
