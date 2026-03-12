@@ -86,6 +86,19 @@ def parse_args(argv=None):
         default="English",
         help="Language in which to generate the review questions and responses.",
     )
+    parser.add_argument(
+        "--review-aspects",
+        default="methodology",
+        help="Specific aspects to focus on when generating the review questions "
+             "(e.g., methodology, clarity, novelty). Provide as a newline-separated list.",
+    )
+    parser.add_argument(
+        "--output-path",
+        default=None,
+        help="Optional path to write the full review output as a text file. "
+             "When omitted, the output is only printed to stdout.",
+    )
+
     return parser.parse_args(argv)
 
 
@@ -130,7 +143,7 @@ def run(args) -> str:
     # ------------------------------------------------------------------ #
     print("[3/4] Generating review questions (problems only)…", flush=True)
     generator = ReviewGenerator(primary_llm)
-    review_questions = generator.generate(paper_text, discipline, args.language)
+    review_questions = generator.generate(paper_text, discipline, args.language, args.review_aspects)
 
     # ------------------------------------------------------------------ #
     # 4. Generate author responses to the review questions
@@ -162,7 +175,7 @@ def run(args) -> str:
     output = (
         "=" * 70 + "\n"
         f"AUTOMATED PEER REVIEW — {args.pdf}\n"
-        "=" * 70 + "\n\n"
+        + "=" * 70 + "\n\n"
         f"Detected Discipline: {discipline}\n\n"
         + "-" * 70 + "\n"
         "REVIEW QUESTIONS (Problems Only)\n"
@@ -189,10 +202,10 @@ def main(argv=None):
 
     print("\n" + output)
 
-    if args.output_file:
-        with open(args.output_file, "w", encoding="utf-8") as fh:
+    if args.output_path:
+        with open(args.output_path, "w", encoding="utf-8") as fh:
             fh.write(output)
-        print(f"Output written to: {args.output_file}")
+        print(f"Output written to: {args.output_path}")
 
 
 if __name__ == "__main__":

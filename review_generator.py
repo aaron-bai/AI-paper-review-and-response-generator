@@ -29,6 +29,8 @@ _USER_TEMPLATE = (
     "Please review the following research paper from the field of {discipline} "
     "and raise all questions and problems you find. Remember: list ONLY problems — "
     "no positive comments.\n\n"
+    "You should foucus on these aspects when reviewing the paper:\n"
+    "{review_aspects}\n\n"
     "You should generate reviews in {language}."
     "--- PAPER TEXT ---\n"
     "{paper_text}\n"
@@ -46,7 +48,7 @@ class ReviewGenerator:
     def __init__(self, llm_client: LLMClient):
         self.llm = llm_client
 
-    def generate(self, paper_text: str, discipline: str, language: str = "English") -> str:
+    def generate(self, paper_text: str, discipline: str, language: str = "English", review_aspects: str = "") -> str:
         """
         Return a numbered list of review questions / problems.
 
@@ -58,6 +60,8 @@ class ReviewGenerator:
             The academic discipline of the paper (from DisciplineDetector).
         language : str
             The language in which to generate the review questions.
+        review_aspects : str
+            Specific aspects to focus on when generating the review questions.
 
         Returns
         -------
@@ -67,7 +71,7 @@ class ReviewGenerator:
         excerpt = paper_text[:_MAX_CHARS]
         system_prompt = _SYSTEM_PROMPT.format(discipline=discipline, language=language)
         user_prompt = _USER_TEMPLATE.format(
-            discipline=discipline, paper_text=excerpt, language=language
+            discipline=discipline, paper_text=excerpt, language=language, review_aspects=review_aspects
         )
         return self.llm.chat(
             system_prompt=system_prompt,
